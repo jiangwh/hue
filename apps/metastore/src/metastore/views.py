@@ -154,7 +154,7 @@ def describe_table(request, database, table):
 
   partitions = None
   if app_name != 'impala' and table.partition_keys:
-    partitions = db.get_partitions(database, table, max_parts=None)
+    partitions = db.get_partitions(database, table, partition_spec='', max_parts=None)
 
   try:
     table_data = db.get_sample(database, table)
@@ -262,7 +262,10 @@ def describe_partitions(request, database, table):
 
   reverse_sort = request.REQUEST.get("sort", "desc").lower() == "desc"
 
-  partitions = db.get_partitions(database, table_obj, max_parts=None, reverse_sort=reverse_sort)
+  query = json.loads(request.POST.get('query', '{}'))
+  partition_spec = ','.join(["%s='%s'" % (k, v) for k, v in query.items()])
+
+  partitions = db.get_partitions(database, table_obj, partition_spec, max_parts=None, reverse_sort=reverse_sort)
 
   return render("describe_partitions.mako", request, {
     'breadcrumbs': [{
