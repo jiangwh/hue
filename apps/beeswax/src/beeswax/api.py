@@ -81,7 +81,7 @@ def error_handler(view_fn):
 
 
 @error_handler
-def autocomplete(request, database=None, table=None):
+def autocomplete(request, database=None, table=None, column=None, nested=None):
   app_name = get_app_name(request)
   query_server = get_query_server_config(app_name)
   do_as = request.user
@@ -95,11 +95,21 @@ def autocomplete(request, database=None, table=None):
       response['databases'] = db.get_databases()
     elif table is None:
       response['tables'] = db.get_tables(database=database)
-    else:
+    elif column is None:
       t = db.get_table(database, table)
       response['hdfs_link'] = t.hdfs_link
       response['columns'] = [column.name for column in t.cols]
       response['extended_columns'] = massage_columns_for_json(t.cols)
+    elif nested is None:
+      t = db.get_column(database, table, column)
+      response['columns'] = [column.name for column in t.cols]
+      response['extended_columns'] = massage_columns_for_json(t.cols)
+    else:
+      nested_tokens = nested.strip('/').split('/')
+      t = db.get_column(database, table, column, nested_tokens)
+      response['columns'] = [column.name for column in t.cols]
+      response['extended_columns'] = massage_columns_for_json(t.cols)
+
   except TTransportException, tx:
     response['code'] = 503
     response['error'] = tx.message
