@@ -1676,6 +1676,27 @@ for x in sys.stdin:
     assert_equal([[109, 1], [108, 1]], terms)
 
 
+  def test_beeswax_api_autocomplete(self):
+    resp = self.client.get(reverse("beeswax:api_autocomplete_databases", kwargs={}))
+    databases = json.loads(resp.content)['databases']
+    assert_true("default" in databases)
+
+    resp = self.client.get(reverse("beeswax:api_autocomplete_databases", kwargs={'database': 'default'}))
+    tables = json.loads(resp.content)['tables']
+    assert_true("test" in tables)
+
+    resp = self.client.get(reverse("beeswax:api_autocomplete_databases", kwargs={'database': 'default', 'table': 'test'}))
+    columns = json.loads(resp.content)['columns']
+    assert_true("foo" in columns)
+    extended_columns = json.loads(resp.content)['extended_columns']
+    assert_equal({'comment': '', 'type': 'int', 'name': 'foo'}, extended_columns[1])
+
+    resp = self.client.get(reverse("beeswax:api_autocomplete_databases", kwargs={'database': 'default', 'table': 'test', 'column': 'foo'}))
+    columns = json.loads(resp.content)['columns']
+    assert_true("foo" in columns)
+    extended_columns = json.loads(resp.content)['extended_columns']
+    assert_equal({'comment': '', 'type': 'int', 'name': 'foo'}, extended_columns[1])
+
 
 def test_import_gzip_reader():
   """Test the gzip reader in create table"""
