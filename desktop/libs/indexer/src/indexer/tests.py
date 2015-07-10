@@ -39,3 +39,14 @@ def test_get_ensemble():
     assert_equal('zoo:2181,zoo2:2181/solr', get_solr_ensemble())
   finally:
     clear()
+
+
+
+#class TestWithSolr():
+#  
+#  def aa(self):
+#    #if not self.searcher.collection_exists(collection['name']):
+#    self.searcher.create_collection(collection['name'], collection['fields'], collection['uniqueKeyField'], collection['df'])    
+  
+#  def test_install_examples(self):
+#    self.c.post(reverse('oozie:install_examples'))

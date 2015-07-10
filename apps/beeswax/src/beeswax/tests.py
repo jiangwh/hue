@@ -108,7 +108,7 @@ class TestBeeswaxWithHadoop(BeeswaxSampleProvider):
     self.user = User.objects.get(username='test')
     add_to_group('test')
     self.db = dbms.get(self.user, get_query_server_config())
-
+    self.cluster.fs.do_as_user('test', self.cluster.fs.create_home_dir, '/user/test')
 
   def _verify_query_state(self, state):
     """
@@ -156,7 +156,8 @@ for x in sys.stdin:
         ("hive.exec.compress.output", "true")], local=False, database=self.db_name) # Run on MR, because that's how we check it worked.
     response = wait_for_query_to_finish(self.client, response, max=180.0)
     # Check that we actually got a compressed output
-    files = self.cluster.fs.listdir("/user/hive/warehouse/%(db)s.db/%(table_name)s" % {'db': self.db_name, 'table_name': table_name})
+    db_path = 'default' if self.db_name == 'default' else '%(db)s.db' % {'db': self.db_name}
+    files = self.cluster.fs.listdir("/user/hive/warehouse/%(db_path)s/%(table_name)s" % {'db_path': db_path, 'table_name': table_name})
     assert_true(len(files) >= 1, files)
     assert_true(files[0].endswith(".deflate"), files[0])
 
@@ -1261,7 +1262,6 @@ for x in sys.stdin:
 
 
   def test_create_table_import(self):
-    """Test create table wizard"""
     RAW_FIELDS = [
       ['ta\tb', 'nada', 'sp ace'],
       ['f\too', 'bar', 'fred'],
