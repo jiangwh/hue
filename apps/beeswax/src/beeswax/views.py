@@ -646,6 +646,24 @@ def massage_columns_for_json(cols):
     })
   return massaged_cols
 
+
+def get_column_type_by_name(name, cols):
+  for column in cols:
+    if column.name == name:
+      return column.type
+
+
+def extract_nested_type(parent, nested):
+  if nested == '$elem$':
+    return re.search(r"array<(.+)>$", parent).group(1)
+  elif nested == '$key$':
+    return re.search(r"map<(\w+),.+>$", parent).group(1)
+  elif nested == '$value$':
+    return re.search(r"map<\w+,(.+)>$", parent).group(1)
+  else:
+    return
+
+
 def authorized_get_design(request, design_id, owner_only=False, must_exist=False):
   if design_id is None and not must_exist:
     return None

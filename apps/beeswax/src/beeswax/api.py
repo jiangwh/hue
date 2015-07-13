@@ -39,8 +39,8 @@ from beeswax.conf import USE_GET_LOG_API
 from beeswax.server import dbms
 from beeswax.server.dbms import expand_exception, get_query_server_config, QueryServerException
 from beeswax.views import authorized_get_design, authorized_get_query_history, make_parameterization_form,\
-                          safe_get_design, save_design, massage_columns_for_json, _get_query_handle_and_state,\
-                          _parse_out_hadoop_jobs
+                          safe_get_design, save_design, massage_columns_for_json, get_column_type_by_name, \
+                          extract_nested_type, _get_query_handle_and_state, _parse_out_hadoop_jobs
 
 
 LOG = logging.getLogger(__name__)
@@ -100,16 +100,34 @@ def autocomplete(request, database=None, table=None, column=None, nested=None):
       response['hdfs_link'] = t.hdfs_link
       response['columns'] = [column.name for column in t.cols]
       response['extended_columns'] = massage_columns_for_json(t.cols)
-    elif nested is None:
-      t = db.get_column(database, table, column)
-      response['columns'] = [column.name for column in t.cols]
-      response['extended_columns'] = massage_columns_for_json(t.cols)
     else:
-      nested_tokens = nested.strip('/').split('/')
-      t = db.get_column(database, table, column, nested_tokens)
-      response['columns'] = [column.name for column in t.cols]
-      response['extended_columns'] = massage_columns_for_json(t.cols)
+      if nested is None:  # autocomplete column
+        t = db.get_table(database, table)
+        current = db.get_column(database, table, column)
+        response['type'] = get_column_type_by_name(column, t.cols)
+      else:  # autocomplete nested data type
+        nested_tokens = nested.strip('/').split('/')
+        last_token = nested_tokens[-1]
+        parent = db.get_column(database, table, column, nested_tokens[:-1])
+        parent_token = nested_tokens[-2] if len(nested_tokens) > 1 else column
+        parent_type = get_column_type_by_name(parent_token, parent.cols)
+        current = db.get_column(database, table, column, nested_tokens)
 
+        if last_token in ('$elem$', '$key$', '$value$'):
+          response['type'] = extract_nested_type(parent_type, last_token)
+        else:  # STRUCT type
+          response['type'] = get_column_type_by_name(last_token, parent.cols)
+
+      # Add nested fields to response
+      if response['type'].startswith('array'):
+        response['elem'] = extract_nested_type(response['type'], '$elem$')
+      elif response['type'].startswith('map'):
+        response['key'] = extract_nested_type(response['type'], '$key$')
+        response['value'] = extract_nested_type(response['type'], '$value$')
+      elif response['type'].startswith('struct'):
+        response['fields'] = massage_columns_for_json(current.cols)
+      else:  # primitive type
+        pass
   except TTransportException, tx:
     response['code'] = 503
     response['error'] = tx.message
